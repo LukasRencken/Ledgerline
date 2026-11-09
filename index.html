@@ -101,6 +101,13 @@
     position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
     overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0;
   }
+  .skip-link {
+    position: absolute; left: -9999px; top: 0;
+    background: var(--blue); color: #fff;
+    padding: 10px 16px; z-index: 2000;
+    border-radius: 0 0 var(--radius-sm) 0;
+  }
+  .skip-link:focus { left: 0; }
 
   button {
     font-family: inherit; font-size: var(--fs-base); font-weight: var(--fw-semibold); line-height: 1;
@@ -146,7 +153,8 @@
   input.invalid, textarea.invalid { border-color: var(--crit); }
   .field-error { color: var(--crit); font-size: var(--fs-sm); margin-top: var(--gap-xs); }
   textarea {
-    font-family: var(--font-mono); font-size: var(--fs-sm);
+    font-family: var(--font-mono);
+    font-size: var(--fs-input);
     resize: none; min-height: 120px;
   }
   @media (hover: hover) and (pointer: fine) { textarea { resize: vertical; } }
@@ -222,6 +230,16 @@
     background: var(--ok-tint); color: var(--ok); letter-spacing: .02em; white-space: nowrap;
   }
   .chain-pill.broken { background: var(--crit-tint); color: var(--crit); }
+  .global-search {
+    display: flex; align-items: center;
+    max-width: 280px; flex: 1 1 160px;
+    position: relative;
+  }
+  .global-search input { padding-left: 32px; min-height: 36px; font-size: var(--fs-sm); }
+  .global-search .ico {
+    position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
+    color: var(--muted); pointer-events: none;
+  }
 
   .hamburger {
     display: none; background: transparent; color: var(--ink);
@@ -277,7 +295,6 @@
     background: var(--panel); border-radius: var(--radius);
     padding: var(--gap-lg); box-shadow: var(--shadow);
     margin-bottom: var(--gap-lg);
-    content-visibility: auto; contain-intrinsic-size: 0 400px;
   }
   .panel h2 { font-size: var(--fs-xl); color: var(--blue-deep); }
   .panel h3 { font-size: var(--fs-md); color: var(--blue-deep); margin-top: var(--gap-md); }
@@ -417,8 +434,21 @@
   .file-input label:hover { background: var(--blue); color: #fff; }
   .file-input .status { font-size: var(--fs-sm); color: var(--muted); }
 
+  .recent-activity { list-style: none; padding: 0; margin: var(--gap) 0 0; }
+  .recent-activity li {
+    padding: 8px 0; border-bottom: 1px solid var(--line-soft);
+    font-size: var(--fs-sm); display: flex; justify-content: space-between; gap: var(--gap);
+  }
+  .recent-activity li:last-child { border-bottom: 0; }
+  .recent-activity .when { color: var(--muted); font-size: var(--fs-xs); white-space: nowrap; }
+
+  .split-controls { display: flex; gap: var(--gap-sm); margin-top: var(--gap-sm); flex-wrap: wrap; }
+
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { transition: none !important; animation: none !important; }
+  }
+  @media (prefers-reduced-data: reduce) {
+    .hero .logo, .topbar .mark { display: none; }
   }
   :focus-visible { outline: none; box-shadow: var(--ring); }
   @supports not selector(:focus-visible) { :focus { outline: none; box-shadow: var(--ring); } }
@@ -440,6 +470,7 @@
     .topbar .slogan-small { display: none; }
     .topbar { gap: var(--gap-sm); }
     .chain-pill { display: none; }
+    .global-search { display: none; }
     .log-scroll { max-height: none; }
     .modal { width: 100%; }
     :root { --fs-input: 16px; }
@@ -458,13 +489,21 @@
 
   @media print {
     .topbar, .sidebar, .sidebar-backdrop, .cta, footer, button,
-    .toast-wrap, .last-run, .banner, .hamburger, .file-input { display: none !important; }
+    .toast-wrap, .last-run, .banner, .hamburger, .file-input, .global-search,
+    .panel-header, .split-controls, .recent-activity, .skip-link { display: none !important; }
     .layout { display: block; }
     .content { padding: 0; max-width: none; }
-    .panel { box-shadow: none; border: 1px solid #ccc; page-break-inside: avoid; content-visibility: visible; }
+    .panel { box-shadow: none; border: 1px solid #ccc; page-break-inside: avoid; }
     body { background: #fff; }
     .log-scroll { max-height: none; overflow: visible; }
     .print-header { display: block !important; }
+    .app:not(.active) { display: none; }
+    #view-audit { display: block !important; }
+    body.printing-audit #view-reconcile,
+    body.printing-audit #view-model,
+    body.printing-audit #view-anomalies,
+    body.printing-audit #view-events,
+    body.printing-audit #view-settings { display: none !important; }
   }
   .print-header { display: none; margin-bottom: var(--gap-md); padding-bottom: var(--gap); border-bottom: 2px solid #000; }
   .print-header .t { font-size: 22px; font-weight: 800; }
@@ -472,6 +511,8 @@
 </style>
 </head>
 <body>
+
+<a href="#mainContent" class="skip-link">Skip to main content</a>
 
 <div id="toastWrap" class="toast-wrap" role="status" aria-live="polite"></div>
 <div id="modalRoot"></div>
@@ -510,7 +551,7 @@
       <li><strong>Local-first</strong> — your ledger never leaves this browser tab. Persisted locally, exportable anytime.</li>
     </ul>
   </section>
-  <footer><p>Ledgerline · v2.1 · Local-first financial integrity · All data stays in your browser.</p></footer>
+  <footer><p>Ledgerline · v2.2 · Local-first financial integrity · All data stays in your browser.</p></footer>
 </div>
 
 <!-- APP -->
@@ -522,6 +563,10 @@
     <svg class="mark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" aria-hidden="true"><rect x="28" y="18" width="64" height="84" rx="6" fill="#1f6feb"/><rect x="36" y="26" width="48" height="68" rx="3" fill="#f4f7fd"/><line x1="20" y1="72" x2="100" y2="72" stroke="#ffb300" stroke-width="3" stroke-linecap="round"/><circle cx="34" cy="72" r="4" fill="#ffb300"/><circle cx="86" cy="72" r="4" fill="#ffb300"/></svg>
     <div><div class="brand">Ledgerline</div><div class="slogan-small">Every number, traceable.</div></div>
     <div class="spacer"></div>
+    <div class="global-search" role="search">
+      <svg class="ico" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="16" y1="16" x2="21" y2="21"/></svg>
+      <input id="globalSearch" type="search" placeholder="Search everything…" aria-label="Global search" />
+    </div>
     <span id="chainPill" class="chain-pill">Chain verified</span>
     <button class="ghost small pill" id="shortcutsBtn" aria-label="Keyboard shortcuts">?</button>
     <button class="ghost small pill" id="resetBtn">Reset</button>
@@ -541,14 +586,14 @@
       <button class="nav-item" data-view="settings">Settings</button>
     </aside>
     <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
-    <main class="content">
+    <main class="content" id="mainContent">
 
       <section id="view-reconcile" class="view">
         <div id="lastRun" class="last-run" style="display:none"></div>
         <div class="panel">
           <div class="panel-header"><h2>Inbound Reconciliation</h2></div>
           <p class="hint">Paste receipts (<code>vendor | YYYY-MM-DD | amount | tax | [currency]</code>) and bank lines (<code>YYYY-MM-DD | description | amount | [currency]</code>). Currency defaults to ZAR; cross-currency pairs are flagged with their FX reason rather than silently excluded.</p>
-          <div class="two-col">
+          <div class="two-col" id="reconcileColumns">
             <div>
               <label for="receiptsInput">Receipts</label>
               <textarea id="receiptsInput" rows="8">Office Depot | 2026-11-02 | 1,240.00 | 186.00 | ZAR
@@ -573,12 +618,22 @@ Office Depot | 2026-11-06 | 75.00 | 11.25 | ZAR</textarea>
               <div id="bankError" class="field-error" style="display:none"></div>
             </div>
           </div>
+          <div class="split-controls" aria-hidden="true">
+            <button class="ghost small" data-split="50">50/50</button>
+            <button class="ghost small" data-split="60">60/40</button>
+            <button class="ghost small" data-split="40">40/60</button>
+          </div>
           <div class="row" style="margin-top:var(--gap-md)">
             <button id="runReconcileBtn">Run reconciliation</button>
+            <button class="ghost" id="bulkAcceptBtn" title="Accept all matches with score ≥ 0.90">Accept all ≥90%</button>
             <button class="ghost" id="reloadSampleBtn">Reload sample</button>
             <span id="reconSummary" class="hint" style="margin:0"></span>
           </div>
           <div id="parseErrors"></div>
+          <div class="recent-activity-wrap">
+            <h3>Recent activity</h3>
+            <ul id="recentActivity" class="recent-activity"></ul>
+          </div>
         </div>
         <div id="reconResults"></div>
       </section>
@@ -612,6 +667,7 @@ Office Depot | 2026-11-06 | 75.00 | 11.25 | ZAR</textarea>
           <div class="row" style="margin-bottom:var(--gap)">
             <button class="ghost small" id="refreshAnomaliesBtn">Refresh</button>
             <button class="ghost small" id="exportAnomaliesBtn">Export CSV</button>
+            <button class="ghost small" id="copyAnomaliesTSVBtn">Copy as TSV</button>
           </div>
           <div id="anomaliesBody"></div>
         </div>
@@ -631,7 +687,7 @@ Office Depot | 2026-11-06 | 75.00 | 11.25 | ZAR</textarea>
             <button class="ghost" id="exportJournalBtn">Journal CSV</button>
             <button class="ghost" id="exportAnomaliesBtn2">Anomalies CSV</button>
             <button class="ghost" id="copyAuditBtn">Copy audit summary</button>
-            <button class="ghost" id="printBtn">Print</button>
+            <button class="ghost" id="printBtn">Print audit only</button>
             <button class="ghost" id="refreshAuditBtn">Refresh</button>
           </div>
           <div id="auditBody" style="margin-top:var(--gap-md)"></div>
@@ -676,6 +732,9 @@ Office Depot | 2026-11-06 | 75.00 | 11.25 | ZAR</textarea>
           <div class="row" style="margin-top:var(--gap-md)">
             <button id="saveFxBtn">Save FX rates</button>
           </div>
+          <h3>Storage</h3>
+          <div id="storageUsage" class="hint">—</div>
+          <div class="row"><button class="ghost small" id="backupNowBtn">Download backup now</button></div>
           <h3>Appearance</h3>
           <div class="row"><button class="ghost small" id="themeToggleBtn">Toggle dark mode</button></div>
           <h3>Danger zone</h3>
@@ -687,24 +746,51 @@ Office Depot | 2026-11-06 | 75.00 | 11.25 | ZAR</textarea>
     </main>
   </div>
 </div>
-
 <script>
 'use strict';
 
+/* ============================================================
+   LEDGERLINE v2.2 — Core runtime
+   ============================================================ */
+
+/* ---------- Constants ---------- */
+const DEBUG = new URLSearchParams(location.search).get('debug') === '1';
+const RENDER_LIMIT = 200;
+const YIELD_EVERY = 250;         // yield to UI every N records
+const LS_WRITE_DEBOUNCE_MS = 100;
+const AUTO_BACKUP_KEY = 'll_lastBackup';
+const BACKUP_INTERVAL_MS = 86400000; // 24h
+
+/* ---------- Debug ---------- */
+function debug(...args) { if (DEBUG) console.debug('[Ledgerline]', ...args); }
+
+/* ---------- Invariant ---------- */
+function invariant(cond, msg) {
+  if (!cond) { debug('INVARIANT FAILED:', msg); throw new Error('Invariant: ' + msg); }
+}
+
+/* ---------- DOM helpers ---------- */
 const $ = s => document.querySelector(s);
 const $$ = s => Array.from(document.querySelectorAll(s));
 const el = (tag, attrs = {}, ...children) => {
   const node = document.createElement(tag);
   Object.entries(attrs).forEach(([k, v]) => {
+    if (v === false || v === null || v === undefined) return;
     if (k === 'class') node.className = v;
     else if (k === 'dataset') Object.assign(node.dataset, v);
-    else if (k.startsWith('on') && typeof v === 'function') node.addEventListener(k.slice(2), v);
-    else if (v !== false && v !== null && v !== undefined) node.setAttribute(k, v);
+    else if (k.startsWith('on') && typeof v === 'function') {
+      node.addEventListener(k.slice(2).toLowerCase(), v);
+    } else if (k === 'style' && typeof v === 'object') Object.assign(node.style, v);
+    else node.setAttribute(k, v);
   });
-  children.forEach(c => c && node.appendChild(typeof c === 'string' ? document.createTextNode(c) : c));
+  children.forEach(c => {
+    if (c === null || c === undefined || c === false) return;
+    node.appendChild(typeof c === 'string' || typeof c === 'number' ? document.createTextNode(String(c)) : c);
+  });
   return node;
 };
 
+/* ---------- Utilities ---------- */
 async function sha256(str) {
   const buf = new TextEncoder().encode(str);
   const d = await crypto.subtle.digest('SHA-256', buf);
@@ -721,41 +807,91 @@ function similarity(a, b) {
   return 1 - dp[s.length][t.length] / Math.max(s.length, t.length);
 }
 const dayDelta = (a, b) => Math.abs((new Date(a) - new Date(b)) / 86400000);
-const isValidDate = s => !isNaN(new Date(s).getTime());
+const isValidDate = s => s && !isNaN(new Date(s).getTime());
 const money = cents => (cents / 100).toFixed(2);
+const moneyAbs = cents => money(Math.abs(cents));
 const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
 function parseAmountCents(raw) {
   if (raw === undefined || raw === null) return { ok: false, reason: 'missing' };
   const cleaned = String(raw).replace(/,/g, '').trim();
+  if (!cleaned) return { ok: false, reason: 'empty' };
   if (/[eE]/.test(cleaned)) return { ok: false, reason: 'scientific notation not allowed: "' + raw + '"' };
   const n = Number(cleaned);
   if (!isFinite(n)) return { ok: false, reason: 'not a number: "' + raw + '"' };
   return { ok: true, cents: Math.round(n * 100) };
 }
-function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; }
-async function copyText(text, label = 'Copied') {
-  try { await navigator.clipboard.writeText(text); toast(label, 'ok', 1800); }
-  catch { toast('Copy failed — clipboard unavailable.', 'warn'); }
+
+function debounce(fn, ms) {
+  let t;
+  const wrapped = (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); };
+  wrapped.flush = (...a) => { clearTimeout(t); fn(...a); };
+  wrapped.cancel = () => clearTimeout(t);
+  return wrapped;
 }
 
+async function copyText(text, label = 'Copied') {
+  try {
+    if (!navigator.clipboard || !window.isSecureContext) throw new Error('insecure');
+    await navigator.clipboard.writeText(text);
+    toast(label, 'ok', 1800);
+  } catch (e) {
+    if (e.message === 'insecure') toast('Clipboard blocked (insecure origin).', 'warn');
+    else toast('Copy failed — clipboard unavailable.', 'warn');
+  }
+}
+
+async function yieldToUI() { return new Promise(r => setTimeout(r, 0)); }
+
+/* ---------- Safe storage ---------- */
 const SafeStore = (() => {
   let available = true;
-  function test() {
-    try { const k = '__ll_test__'; localStorage.setItem(k, '1'); localStorage.removeItem(k); return true; }
-    catch { return false; }
-  }
-  function set(key, val) { try { localStorage.setItem(key, val); return true; } catch { available = false; return false; } }
-  function get(key) { try { return localStorage.getItem(key); } catch { return null; } }
-  function remove(key) { try { localStorage.removeItem(key); return true; } catch { return false; } }
-  function wipeAll() {
-    try { Object.keys(localStorage).filter(k => k.startsWith('ll_')).forEach(k => localStorage.removeItem(k)); return true; }
-    catch { return false; }
-  }
-  if (!test()) available = false;
-  return { get available() { return available; }, set, get, remove, wipeAll };
+  try { const k = '__ll_test__'; localStorage.setItem(k, '1'); localStorage.removeItem(k); }
+  catch { available = false; }
+  return {
+    get available() { return available; },
+    set(k, v) { try { localStorage.setItem(k, v); return true; } catch { available = false; return false; } },
+    get(k) { try { return localStorage.getItem(k); } catch { return null; } },
+    remove(k) { try { localStorage.removeItem(k); return true; } catch { return false; } },
+    wipeAll() {
+      try { Object.keys(localStorage).filter(k => k.startsWith('ll_')).forEach(k => localStorage.removeItem(k)); return true; }
+      catch { return false; }
+    },
+    sizeKB() {
+      try {
+        let bytes = 0;
+        Object.keys(localStorage).filter(k => k.startsWith('ll_')).forEach(k => {
+          bytes += (localStorage.getItem(k) || '').length * 2;
+        });
+        return Math.round(bytes / 1024);
+      } catch { return 0; }
+    },
+  };
 })();
 
-const DEFAULT_SETTINGS = { autoAccept: 0.85, matAbs: 50000, matRel: 0.5, minReason: 5, theme: 'light', fx: { USD: 18.50, EUR: 20.10, GBP: 23.40 } };
+/* ---------- Batched localStorage writer ---------- */
+const BatchedStore = (() => {
+  const pending = new Map();
+  let timer = null;
+  function flush() {
+    timer = null;
+    for (const [k, v] of pending) SafeStore.set(k, v);
+    pending.clear();
+  }
+  function set(k, v) {
+    pending.set(k, v);
+    if (timer) clearTimeout(timer);
+    timer = setTimeout(flush, LS_WRITE_DEBOUNCE_MS);
+  }
+  function flushNow() { if (timer) { clearTimeout(timer); flush(); } }
+  return { set, flushNow };
+})();
+
+/* ---------- Settings ---------- */
+const DEFAULT_SETTINGS = {
+  autoAccept: 0.85, matAbs: 50000, matRel: 0.5, minReason: 5,
+  theme: 'light', fx: { USD: 18.50, EUR: 20.10, GBP: 23.40 },
+};
 let SETTINGS = JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
 function loadSettings() {
   try {
@@ -787,10 +923,24 @@ function fillSettingsUI() {
   $('#fxUSD').value = SETTINGS.fx.USD;
   $('#fxEUR').value = SETTINGS.fx.EUR;
   $('#fxGBP').value = SETTINGS.fx.GBP;
+  const kb = SafeStore.sizeKB();
+  $('#storageUsage').textContent = kb
+    ? `Ledger uses roughly ${kb} KB of browser storage.`
+    : 'Storage unavailable (private mode or quota exhausted).';
 }
-function applyTheme() { document.documentElement.dataset.theme = SETTINGS.theme || 'light'; }
-function toggleTheme() { SETTINGS.theme = SETTINGS.theme === 'dark' ? 'light' : 'dark'; applyTheme(); SafeStore.set('ll_settings', JSON.stringify(SETTINGS)); toast('Theme: ' + SETTINGS.theme, 'ok', 1500); }
+function applyTheme() {
+  const explicit = SETTINGS.theme === 'dark' || SETTINGS.theme === 'light';
+  if (explicit) document.documentElement.dataset.theme = SETTINGS.theme;
+  else delete document.documentElement.dataset.theme;
+}
+function toggleTheme() {
+  SETTINGS.theme = SETTINGS.theme === 'dark' ? 'light' : 'dark';
+  applyTheme();
+  SafeStore.set('ll_settings', JSON.stringify(SETTINGS));
+  toast('Theme: ' + SETTINGS.theme, 'ok', 1500);
+}
 
+/* ---------- Toast ---------- */
 function toast(msg, kind = 'info', ms = 3500) {
   const wrap = $('#toastWrap');
   while (wrap.children.length >= 4) wrap.firstChild.remove();
@@ -799,6 +949,7 @@ function toast(msg, kind = 'info', ms = 3500) {
   setTimeout(() => { node.style.opacity = '0'; node.style.transition = 'opacity .3s'; setTimeout(() => node.remove(), 300); }, ms);
 }
 
+/* ---------- Banner (single per id, no leak) ---------- */
 function showBanner(message, actions = [], kind = 'warn', id = 'banner') {
   const root = $('#bannerRoot');
   const existing = root.querySelector('[data-banner-id="' + id + '"]');
@@ -811,48 +962,68 @@ function showBanner(message, actions = [], kind = 'warn', id = 'banner') {
   return () => node.remove();
 }
 
+/* ---------- Modal (stack-safe, focus-restoring, error-safe) ---------- */
 const modalStack = [];
+let lastFocused = null;
 function modal({ title, body, actions }) {
+  lastFocused = document.activeElement;
   const backdrop = el('div', { class: 'modal-backdrop' });
-  const box = el('div', { class: 'modal', role: 'dialog', 'aria-modal': 'true' });
-  box.innerHTML = `<h3>${esc(title)}</h3><div class="modal-body"></div><div class="actions"></div>`;
+  const box = el('div', { class: 'modal', role: 'dialog', 'aria-modal': 'true', 'aria-label': title });
+  box.innerHTML = `<h3></h3><div class="modal-body"></div><div class="actions"></div>`;
+  box.querySelector('h3').textContent = title;
   box.querySelector('.modal-body').appendChild(body);
   const actWrap = box.querySelector('.actions');
+  let closed = false;
+  const close = () => {
+    if (closed) return;
+    closed = true;
+    backdrop.remove();
+    const i = modalStack.indexOf(close);
+    if (i >= 0) modalStack.splice(i, 1);
+    if (lastFocused && typeof lastFocused.focus === 'function') {
+      try { lastFocused.focus(); } catch {}
+    }
+  };
   actions.forEach(a => {
     const b = el('button', { class: a.className || '' }, a.label);
-    b.addEventListener('click', () => { a.onClick(); close(); });
+    b.addEventListener('click', () => {
+      try { a.onClick(); } catch (e) { debug('Modal action error', e); } finally { close(); }
+    });
     actWrap.appendChild(b);
   });
   backdrop.appendChild(box);
   $('#modalRoot').appendChild(backdrop);
-  const close = () => {
-    backdrop.remove();
-    const i = modalStack.indexOf(close);
-    if (i >= 0) modalStack.splice(i, 1);
-  };
   modalStack.push(close);
   backdrop.addEventListener('click', e => { if (e.target === backdrop && actions.some(a => a.cancel)) close(); });
+  const firstInput = box.querySelector('input, textarea, button');
+  if (firstInput) setTimeout(() => { try { firstInput.focus(); } catch {} }, 0);
   return { close };
 }
+
+/* ---------- Shortcuts modal ---------- */
 function openShortcuts() {
   const body = el('div');
   body.innerHTML = `<table class="table"><tbody>
     <tr><td><kbd>Ctrl</kbd> / <kbd>⌘</kbd> + <kbd>K</kbd></td><td>Open the app</td></tr>
     <tr><td><kbd>Esc</kbd></td><td>Close top-most modal</td></tr>
     <tr><td><kbd>Ctrl</kbd> / <kbd>⌘</kbd> + <kbd>Enter</kbd></td><td>Run active action</td></tr>
+    <tr><td><kbd>Ctrl</kbd> / <kbd>⌘</kbd> + <kbd>Z</kbd></td><td>Reverse last accepted match</td></tr>
     <tr><td><kbd>?</kbd></td><td>This help</td></tr>
   </tbody></table>`;
   modal({ title: 'Keyboard shortcuts', body, actions: [{ label: 'Close', className: 'ghost', onClick: () => {}, cancel: true }] });
 }
 
+/* ---------- EventLog (serialized, cached, cross-tab aware) ---------- */
 const EventLog = (() => {
   const KEY = 'll_events_v1';
   const CHECKPOINT_KEY = 'll_checkpoint_v1';
   let events = [];
   let seq = 0;
   let chainTail = Promise.resolve();
-  let cachedAnomCount = 0;
   let cacheInvalid = true;
+  let cachedAnomalies = [];
+  let cachedCriticalCount = 0;
+  let storageWarned = false;
 
   function load() {
     try {
@@ -861,24 +1032,28 @@ const EventLog = (() => {
         const parsed = JSON.parse(raw);
         events = parsed.events || [];
         seq = events.length ? events[events.length - 1].seq : 0;
+        invariant(seq === events.length, 'seq mismatch on load');
       }
       const checkpoint = SafeStore.get(CHECKPOINT_KEY);
       if (checkpoint && events.length) {
         const expected = events[events.length - 1].hash;
         if (checkpoint !== expected) {
           showBanner(
-            'Event log integrity warning: stored checkpoint does not match the log tail. This can indicate truncation or manual editing.',
-            [{ label: 'Verify now', onClick: () => verifyChainUI() }, { label: 'Dismiss', onClick: () => document.querySelector('[data-banner-id="integrity"]')?.remove() }],
+            'Event log integrity warning: stored checkpoint does not match the log tail. Truncation or manual edit suspected.',
+            [
+              { label: 'Verify now', onClick: () => { nav('events'); verifyChainUI(); } },
+              { label: 'Dismiss', onClick: () => document.querySelector('[data-banner-id="integrity"]')?.remove() },
+            ],
             'crit', 'integrity'
           );
         }
       }
-    } catch { events = []; seq = 0; }
+    } catch (e) { debug('EventLog load error', e); events = []; seq = 0; }
   }
   function persist() {
     if (!SafeStore.set(KEY, JSON.stringify({ events }))) {
-      if (!window.__bannerShown) {
-        window.__bannerShown = true;
+      if (!storageWarned) {
+        storageWarned = true;
         showBanner('Storage unavailable (private mode or quota reached). Events will not survive reload.', [], 'warn', 'storage');
       }
       return false;
@@ -886,6 +1061,7 @@ const EventLog = (() => {
     if (events.length) SafeStore.set(CHECKPOINT_KEY, events[events.length - 1].hash);
     return true;
   }
+  function invalidateCache() { cacheInvalid = true; }
   function append(kind, actor, payload) {
     const p = chainTail.then(async () => {
       const prevHash = events.length ? events[events.length - 1].hash : 'GENESIS';
@@ -895,8 +1071,9 @@ const EventLog = (() => {
       const hash = await sha256(body);
       const ev = { seq: n, id: 'evt_' + n, kind, at, actor, payload, prevHash, hash };
       events.push(ev);
+      invariant(ev.seq === events.length, 'seq/event count mismatch');
       persist();
-      cacheInvalid = true;
+      invalidateCache();
       return ev;
     });
     chainTail = p.catch(() => {});
@@ -914,16 +1091,37 @@ const EventLog = (() => {
     return { ok: true, head: prev, count: events.length };
   }
   return {
-    append, all: () => [...events], verifyChain,
-    reset: () => { events = []; seq = 0; SafeStore.remove(KEY); SafeStore.remove(CHECKPOINT_KEY); cacheInvalid = true; },
+    append,
+    all: () => [...events],
+    verifyChain,
+    reset: () => {
+      events = []; seq = 0;
+      SafeStore.remove(KEY); SafeStore.remove(CHECKPOINT_KEY);
+      invalidateCache();
+    },
     load,
-    get cachedAnomCount() { return cachedAnomCount; },
-    set cachedAnomCount(v) { cachedAnomCount = v; cacheInvalid = false; },
+    invalidateCache,
     get cacheInvalid() { return cacheInvalid; },
+    set cachedAnomalies(v) { cachedAnomalies = v; cacheInvalid = false; },
+    get cachedAnomalies() { return cachedAnomalies; },
+    set cachedCriticalCount(v) { cachedCriticalCount = v; },
+    get cachedCriticalCount() { return cachedCriticalCount; },
   };
 })();
 EventLog.load();
 
+// Cross-tab sync
+window.addEventListener('storage', e => {
+  if (e.key === 'll_events_v1') {
+    EventLog.load();
+    EventLog.invalidateCache();
+    refreshChainPill();
+    refreshAnomCount();
+    debug('Cross-tab sync: event log reloaded');
+  }
+});
+
+/* ---------- FX ---------- */
 function fxRate(from, to) {
   if (from === to) return 1;
   const toZar = (cur) => cur === 'ZAR' ? 1 : (SETTINGS.fx[cur] || 1);
@@ -931,6 +1129,7 @@ function fxRate(from, to) {
 }
 function convertCents(cents, from, to) { return Math.round(cents * fxRate(from, to)); }
 
+/* ---------- Matching ---------- */
 function explainMatch({ vendorScore, amountDelta, dayDelta: dd, crossCurrency, fromCur, toCur, fxApplied }) {
   const reasons = [];
   const pct = Math.round(vendorScore * 100);
@@ -943,40 +1142,51 @@ function explainMatch({ vendorScore, amountDelta, dayDelta: dd, crossCurrency, f
   else reasons.push(`Posted ${dd} days apart — review timing difference`);
   return reasons;
 }
-function suggestMatches(receipts, bankLines) {
+async function suggestMatches(receipts, bankLines, onProgress) {
   const matched = [];
   const excluded = [];
-  for (const r of receipts) for (const b of bankLines) {
-    const sameCur = r.currency === b.currency;
-    const receiptCents = sameCur ? r.totalCents : convertCents(r.totalCents, r.currency, b.currency);
-    const fxApplied = sameCur ? 1 : fxRate(r.currency, b.currency);
-    const vendorScore = similarity(r.vendor, b.description);
-    const amountDelta = Math.abs(receiptCents - Math.abs(b.amountCents));
-    const dd = dayDelta(r.date, b.date);
-    const amountScore = amountDelta === 0 ? 1 : Math.max(0, 1 - amountDelta / Math.max(1, receiptCents));
-    const dateScore = dd <= 3 ? 1 : Math.max(0, 1 - (dd - 3) / 30);
-    const score = (vendorScore * 0.35 + amountScore * 0.45 + dateScore * 0.20) * (sameCur ? 1 : 0.95);
-    if (score < 0.5) {
-      if (!sameCur && vendorScore > 0.5) {
-        excluded.push({
-          receipt: r, bankLine: b, score,
-          reasons: explainMatch({ vendorScore, amountDelta, dayDelta: dd, crossCurrency: true, fromCur: r.currency, toCur: b.currency, fxApplied }),
-        });
+  let processed = 0;
+  for (const r of receipts) {
+    for (const b of bankLines) {
+      const sameCur = r.currency === b.currency;
+      const receiptCents = sameCur ? r.totalCents : convertCents(r.totalCents, r.currency, b.currency);
+      const fxApplied = sameCur ? 1 : fxRate(r.currency, b.currency);
+      const vendorScore = similarity(r.vendor, b.description);
+      const amountDelta = Math.abs(receiptCents - Math.abs(b.amountCents));
+      const dd = dayDelta(r.date, b.date);
+      const amountScore = amountDelta === 0 ? 1 : Math.max(0, 1 - amountDelta / Math.max(1, receiptCents));
+      const dateScore = dd <= 3 ? 1 : Math.max(0, 1 - (dd - 3) / 30);
+      const score = (vendorScore * 0.35 + amountScore * 0.45 + dateScore * 0.20) * (sameCur ? 1 : 0.95);
+      if (score < 0.5) {
+        if (!sameCur && vendorScore > 0.5) {
+          excluded.push({ receipt: r, bankLine: b, score,
+            reasons: explainMatch({ vendorScore, amountDelta, dayDelta: dd, crossCurrency: true, fromCur: r.currency, toCur: b.currency, fxApplied }) });
+        }
+        continue;
       }
-      continue;
+      matched.push({
+        receipt: r, bankLine: b, score,
+        reasons: explainMatch({ vendorScore, amountDelta, dayDelta: dd, crossCurrency: !sameCur, fromCur: r.currency, toCur: b.currency, fxApplied }),
+        autoAcceptable: score >= SETTINGS.autoAccept,
+      });
     }
-    matched.push({
-      receipt: r, bankLine: b, score,
-      reasons: explainMatch({ vendorScore, amountDelta, dayDelta: dd, crossCurrency: !sameCur, fromCur: r.currency, toCur: b.currency, fxApplied }),
-      autoAcceptable: score >= SETTINGS.autoAccept,
-    });
+    processed++;
+    if (processed % YIELD_EVERY === 0) {
+      if (onProgress) onProgress(processed, receipts.length);
+      await yieldToUI();
+    }
   }
   matched.sort((x, y) => y.score - x.score || x.receipt.id.localeCompare(y.receipt.id) || x.bankLine.id.localeCompare(y.bankLine.id));
   const usedR = new Set(), usedB = new Set();
-  const final = matched.filter(m => { if (usedR.has(m.receipt.id) || usedB.has(m.bankLine.id)) return false; usedR.add(m.receipt.id); usedB.add(m.bankLine.id); return true; });
+  const final = matched.filter(m => {
+    if (usedR.has(m.receipt.id) || usedB.has(m.bankLine.id)) return false;
+    usedR.add(m.receipt.id); usedB.add(m.bankLine.id);
+    return true;
+  });
   return { matches: final, excluded };
 }
 
+/* ---------- Parsing ---------- */
 function parseReceipts(text) {
   const receipts = [], rejected = [];
   text.split('\n').forEach((line, idx) => {
@@ -987,6 +1197,7 @@ function parseReceipts(text) {
     if (!isValidDate(date)) { rejected.push({ line: idx + 1, raw: l, reason: 'invalid date "' + date + '"' }); return; }
     const amt = parseAmountCents(amount); if (!amt.ok) { rejected.push({ line: idx + 1, raw: l, reason: 'amount ' + amt.reason }); return; }
     const tx = parseAmountCents(tax); if (!tx.ok) { rejected.push({ line: idx + 1, raw: l, reason: 'tax ' + tx.reason }); return; }
+    if (tx.cents > amt.cents) { rejected.push({ line: idx + 1, raw: l, reason: 'tax exceeds total — likely a parsing error' }); return; }
     receipts.push({ id: 'rcpt_' + (idx + 1), vendor, date, totalCents: amt.cents, taxCents: tx.cents, currency: currency.toUpperCase(), confidence: 0.95 });
   });
   return { receipts, rejected };
@@ -1005,10 +1216,11 @@ function parseBankLines(text) {
   return { bankLines, rejected };
 }
 
-async function reconcile(receipts, bankLines, actor = 'user') {
+/* ---------- Reconcile ---------- */
+async function reconcile(receipts, bankLines, actor = 'user', onProgress) {
   for (const r of receipts) await EventLog.append('receipt.ingested', actor, { receiptId: r.id, vendor: r.vendor, totalCents: r.totalCents, currency: r.currency });
   for (const b of bankLines) await EventLog.append('bank.imported', actor, { bankLineId: b.id, ref: b.externalRef, amountCents: b.amountCents, currency: b.currency });
-  const { matches, excluded } = suggestMatches(receipts, bankLines);
+  const { matches, excluded } = await suggestMatches(receipts, bankLines, onProgress);
   for (const m of matches) await EventLog.append('match.suggested', actor, { receiptId: m.receipt.id, bankLineId: m.bankLine.id, score: m.score, reasons: m.reasons });
   const matchedR = new Set(matches.map(m => m.receipt.id));
   const matchedB = new Set(matches.map(m => m.bankLine.id));
@@ -1020,6 +1232,7 @@ async function reconcile(receipts, bankLines, actor = 'user') {
   };
 }
 
+/* ---------- Model integrity ---------- */
 function validateCells(cells) {
   if (!cells || typeof cells !== 'object' || Array.isArray(cells)) return 'Cells must be a JSON object.';
   for (const k of Object.keys(cells)) {
@@ -1056,6 +1269,7 @@ async function takeSnapshot(sheet, cells, actor = 'user') {
   return { sheet, changes };
 }
 
+/* ---------- Anomaly detection ---------- */
 function detectAnomalies(events) {
   const out = [];
   for (const e of events) {
@@ -1064,7 +1278,7 @@ function detectAnomalies(events) {
       const material = (p.absDelta >= SETTINGS.matAbs) || (p.magnitude >= SETTINGS.matRel);
       if (material && typeof p.from === 'number' && typeof p.to === 'number') {
         out.push({ rule: 'MODEL.MATERIAL_SWING', severity: 'warn',
-          message: `${p.sheet}!${p.cell} moved ${Math.round(p.magnitude*100)}% (${p.from} → ${p.to}, Δ ${money(p.absDelta*100)} cents) — materiality threshold breached.`,
+          message: `${p.sheet}!${p.cell} moved ${Math.round(p.magnitude*100)}% (${p.from} → ${p.to}, Δ ${moneyAbs(p.absDelta*100)} cents) — materiality threshold breached.`,
           seq: e.seq });
       }
     }
@@ -1085,13 +1299,14 @@ function detectAnomalies(events) {
 function getCachedAnomalies() {
   if (EventLog.cacheInvalid) {
     const anomalies = detectAnomalies(EventLog.all());
-    EventLog.cachedAnomCount = anomalies.filter(a => a.severity === 'critical').length;
-    window.__anomalies = anomalies;
+    EventLog.cachedAnomalies = anomalies;
+    EventLog.cachedCriticalCount = anomalies.filter(a => a.severity === 'critical').length;
   }
-  return window.__anomalies || [];
+  return EventLog.cachedAnomalies;
 }
 
-async function buildAuditPackage() {
+/* ---------- Audit ---------- */
+async function buildAuditPackage(opts = {}) {
   const events = EventLog.all();
   const chain = await EventLog.verifyChain();
   const anomalies = detectAnomalies(events);
@@ -1104,7 +1319,9 @@ async function buildAuditPackage() {
     eventCount: events.length,
     anomalies, events,
   };
-  await EventLog.append('audit.exported', 'system', { eventCount: events.length, chainVerified: chain.ok });
+  if (opts.log !== false) {
+    await EventLog.append('audit.exported', 'system', { eventCount: events.length, chainVerified: chain.ok });
+  }
   return pkg;
 }
 function buildAuditText(pkg) {
@@ -1120,6 +1337,7 @@ function buildAuditText(pkg) {
   return lines.join('\n');
 }
 
+/* ---------- Download helpers ---------- */
 function downloadFile(name, content, mime = 'text/plain') {
   const blob = new Blob([content], { type: mime });
   const url = URL.createObjectURL(blob);
@@ -1129,12 +1347,15 @@ function downloadFile(name, content, mime = 'text/plain') {
 }
 function csvEscape(s) { const str = String(s ?? ''); return /[",\n]/.test(str) ? '"' + str.replace(/"/g, '""') + '"' : str; }
 function toCSV(rows) { return rows.map(r => r.map(csvEscape).join(',')).join('\n'); }
+function toTSV(rows) { return rows.map(r => r.map(s => String(s ?? '').replace(/\t/g, ' ')).join('\t')).join('\n'); }
 
+/* ---------- Navigation ---------- */
 function openApp() {
   $('#landing').style.display = 'none';
   $('#app').classList.add('active');
   closeSidebar();
   nav('reconcile');
+  verifyChainOnOpen();
 }
 function closeApp() { $('#app').classList.remove('active'); $('#landing').style.display = 'block'; }
 function nav(view) {
@@ -1145,6 +1366,7 @@ function nav(view) {
   if (view === 'audit') renderAudit();
   if (view === 'events') renderEvents();
   if (view === 'settings') fillSettingsUI();
+  if (view === 'reconcile') renderRecentActivity();
   refreshAnomCount();
   closeSidebar();
 }
@@ -1159,6 +1381,22 @@ function closeSidebar() {
   $('#hamburgerBtn').setAttribute('aria-expanded', 'false');
 }
 
+/* ---------- Recent activity ---------- */
+function renderRecentActivity() {
+  const events = EventLog.all().slice(-5).reverse();
+  const list = $('#recentActivity');
+  if (!list) return;
+  if (!events.length) {
+    list.innerHTML = `<li class="empty" style="justify-content:center">No activity yet.</li>`;
+    return;
+  }
+  list.innerHTML = events.map(e => `
+    <li><span><span class="badge ${e.actor === 'system' ? 'muted' : 'info'}">${esc(e.actor)}</span> ${esc(e.kind)}</span>
+    <span class="when">${esc(new Date(e.at).toLocaleTimeString())}</span></li>
+  `).join('');
+}
+
+/* ---------- Sample loaders ---------- */
 function loadSampleReconcile() {
   $('#receiptsInput').value = `Office Depot | 2026-11-02 | 1,240.00 | 186.00 | ZAR
 Uber | 2026-11-03 | 185.50 | 0 | ZAR
@@ -1171,6 +1409,13 @@ Office Depot | 2026-11-06 | 75.00 | 11.25 | ZAR`;
 2026-11-05 | WOOLWORTHS FOOD | -890.25 | ZAR
 2026-11-09 | UNRELATED TRANSFER | -5,000.00 | ZAR`;
 }
+function loadSampleModel() {
+  $('#sheetName').value = 'FY26 Budget';
+  $('#cellsInput').value = JSON.stringify({ Revenue: 1200000, COGS: 480000, Salaries: 300000, Marketing: 90000, Rent: 144000 });
+}
+
+/* ---------- Reconciliation UI ---------- */
+let currentOutcome = null;
 
 async function runReconcile() {
   const r1 = parseReceipts($('#receiptsInput').value);
@@ -1187,9 +1432,17 @@ async function runReconcile() {
 
   const receipts = r1.receipts, bankLines = r2.bankLines;
   if (!receipts.length || !bankLines.length) { $('#reconSummary').textContent = 'Need at least one valid receipt and one valid bank line.'; return; }
+
+  const btn = $('#runReconcileBtn');
+  btn.disabled = true;
   const t0 = performance.now();
-  const outcome = await reconcile(receipts, bankLines, 'user');
+  const outcome = await reconcile(receipts, bankLines, 'user', (done, total) => {
+    $('#reconSummary').textContent = `Matching… ${done}/${total}`;
+  });
   const t1 = performance.now();
+  currentOutcome = outcome;
+  btn.disabled = false;
+
   $('#reconSummary').textContent = `${outcome.matches.length} suggested · ${outcome.excluded.length} excluded (FX) · ${outcome.unmatchedReceipts.length} unmatched receipts · ${outcome.unmatchedBankLines.length} unmatched bank lines · ${(t1 - t0).toFixed(0)}ms`;
 
   const lr = $('#lastRun');
@@ -1197,35 +1450,49 @@ async function runReconcile() {
   lr.innerHTML = `<span>Last run: ${outcome.matches.length} match(es) at ${new Date(outcome.generatedAt).toLocaleTimeString()}</span><button class="ghost small" data-dismiss="lastRun">Dismiss</button>`;
   lr.querySelector('[data-dismiss]').addEventListener('click', () => lr.style.display = 'none');
 
-  const container = $('#reconResults'); container.innerHTML = '';
-  const renderTable = (rows, title, hint, excludeReasonList = false) => {
+  renderReconResults(outcome);
+  await refreshChainPill(); refreshAnomCount();
+  renderRecentActivity();
+}
+
+function renderReconResults(outcome) {
+  const container = $('#reconResults');
+  container.innerHTML = '';
+
+  const renderMatchTable = (rows, title, hint, isExcluded) => {
     const panel = el('div', { class: 'panel' });
     panel.innerHTML = `<h2>${esc(title)}</h2><p class="hint">${esc(hint)}</p>
       <div class="table-wrap"><table class="table"><thead><tr><th>Receipt</th><th>Bank line</th><th class="num">Score</th><th>Why</th><th></th></tr></thead><tbody></tbody></table></div>`;
     const tbody = panel.querySelector('tbody');
     rows.forEach((m, idx) => {
       const tr = el('tr');
+      const copyBtn = isExcluded ? '' : `<button class="icon" data-act="copy" data-idx="${idx}" aria-label="Copy journal">⧉</button>`;
       tr.innerHTML = `
         <td><strong>${esc(m.receipt.vendor)}</strong><br><code>${esc(m.receipt.date)}</code> · <span class="num">${money(m.receipt.totalCents)}</span> ${esc(m.receipt.currency)}</td>
-        <td>${esc(m.bankLine.description)}<br><code>${esc(m.bankLine.date)}</code> · <span class="num">${money(Math.abs(m.bankLine.amountCents))}</span> ${esc(m.bankLine.currency)}</td>
+        <td>${esc(m.bankLine.description)}<br><code>${esc(m.bankLine.date)}</code> · <span class="num">${moneyAbs(m.bankLine.amountCents)}</span> ${esc(m.bankLine.currency)}</td>
         <td class="num"><div class="score-bar"><span style="width:${Math.round(m.score*100)}%"></span></div><small>${(m.score * 100).toFixed(1)}%${m.autoAcceptable ? ' · auto' : ''}</small></td>
         <td><ul class="reason-list">${m.reasons.map(r => `<li>${esc(r)}</li>`).join('')}</ul></td>
-        <td>${excludeReasonList ? '' : '<button class="small" data-act="accept" data-idx="' + idx + '">Accept</button> <button class="small ghost" data-act="reject" data-idx="' + idx + '">Reject</button>'}</td>`;
+        <td>${isExcluded ? '' : `<button class="small" data-act="accept" data-idx="${idx}">Accept</button> <button class="small ghost" data-act="reject" data-idx="${idx}">Reject</button>`} ${copyBtn}</td>`;
       tbody.appendChild(tr);
     });
-    panel.addEventListener('click', e => {
+    panel.addEventListener('click', async e => {
       const btn = e.target.closest('button[data-act]');
       if (!btn) return;
       e.preventDefault();
       const i = parseInt(btn.dataset.idx, 10);
-      if (btn.dataset.act === 'accept') acceptMatchIn(outcome, i, btn);
-      if (btn.dataset.act === 'reject') rejectMatchIn(outcome, i);
+      const m = rows[i];
+      if (btn.dataset.act === 'accept') await acceptMatch(m, btn);
+      else if (btn.dataset.act === 'reject') rejectMatch(m);
+      else if (btn.dataset.act === 'copy') {
+        const line = `Dr 6100 Office Supplies ${money(m.receipt.totalCents)} ${m.receipt.currency} / Cr 1000 Bank ${moneyAbs(m.bankLine.amountCents)} ${m.bankLine.currency}`;
+        copyText(line, 'Journal line copied');
+      }
     });
     container.appendChild(panel);
   };
 
   if (outcome.matches.length) {
-    renderTable(outcome.matches, 'Suggested matches', 'Accept posts a balanced journal entry. Reject requires a reason. Accepted matches can be reversed.');
+    renderMatchTable(outcome.matches, 'Suggested matches', 'Accept posts a balanced journal entry. Reject requires a reason. Accepted matches can be reversed with Ctrl+Z.', false);
   } else {
     const p = el('div', { class: 'panel' });
     p.innerHTML = `<p class="empty">No matches above threshold. <button class="ghost small" data-nav="settings">Adjust thresholds</button></p>`;
@@ -1234,7 +1501,7 @@ async function runReconcile() {
   }
 
   if (outcome.excluded.length) {
-    renderTable(outcome.excluded, 'Considered but excluded (cross-currency, below threshold)', 'These pairs were within vendor similarity but scored below threshold after FX conversion. Shown so nothing silently vanishes.', true);
+    renderMatchTable(outcome.excluded, 'Considered but excluded (cross-currency, below threshold)', 'These pairs were within vendor similarity but scored below threshold after FX conversion. Shown so nothing silently vanishes.', true);
   }
 
   if (outcome.unmatchedReceipts.length) {
@@ -1246,30 +1513,51 @@ async function runReconcile() {
   if (outcome.unmatchedBankLines.length) {
     const p = el('div', { class: 'panel' });
     p.innerHTML = `<h2>Unmatched bank lines</h2><div class="table-wrap"><table class="table"><thead><tr><th>Description</th><th>Date</th><th class="num">Amount</th><th>Currency</th></tr></thead><tbody>
-      ${outcome.unmatchedBankLines.map(b => `<tr><td>${esc(b.description)}</td><td><code>${esc(b.date)}</code></td><td class="num">${money(Math.abs(b.amountCents))}</td><td>${esc(b.currency)}</td></tr>`).join('')}</tbody></table></div>`;
+      ${outcome.unmatchedBankLines.map(b => `<tr><td>${esc(b.description)}</td><td><code>${esc(b.date)}</code></td><td class="num">${moneyAbs(b.amountCents)}</td><td>${esc(b.currency)}</td></tr>`).join('')}</tbody></table></div>`;
     container.appendChild(p);
   }
-  await refreshChainPill(); refreshAnomCount();
 }
 
-async function acceptMatchIn(outcome, idx, btn) {
+async function acceptMatch(m, btn) {
   if (btn && btn.disabled) return;
   if (btn) btn.disabled = true;
-  const m = outcome.matches[idx];
-  await EventLog.append('match.accepted', 'user', { receiptId: m.receipt.id, bankLineId: m.bankLine.id, score: m.score });
-  const balanced = m.receipt.totalCents === Math.abs(m.bankLine.amountCents);
-  await EventLog.append('journal.posted', 'user', {
-    date: m.bankLine.date, memo: 'Reconciled: ' + m.receipt.vendor,
-    debit: { account: '6100 - Office Supplies', amountCents: m.receipt.totalCents },
-    credit: { account: '1000 - Bank', amountCents: Math.abs(m.bankLine.amountCents) },
-    balanced,
-  });
-  toast(`Journal posted: Dr 6100 ${money(m.receipt.totalCents)} / Cr 1000 ${money(Math.abs(m.bankLine.amountCents))}${balanced ? '' : ' — UNBALANCED'}`, balanced ? 'ok' : 'crit');
-  await refreshChainPill(); refreshAnomCount();
-  if (btn) setTimeout(() => { btn.disabled = false; }, 800);
+  try {
+    await EventLog.append('match.accepted', 'user', { receiptId: m.receipt.id, bankLineId: m.bankLine.id, score: m.score });
+    const balanced = m.receipt.totalCents === Math.abs(m.bankLine.amountCents);
+    await EventLog.append('journal.posted', 'user', {
+      date: m.bankLine.date, memo: 'Reconciled: ' + m.receipt.vendor,
+      debit: { account: '6100 - Office Supplies', amountCents: m.receipt.totalCents },
+      credit: { account: '1000 - Bank', amountCents: Math.abs(m.bankLine.amountCents) },
+      balanced,
+    });
+    toast(`Journal posted: Dr 6100 ${money(m.receipt.totalCents)} / Cr 1000 ${moneyAbs(m.bankLine.amountCents)}${balanced ? '' : ' — UNBALANCED'}`, balanced ? 'ok' : 'crit');
+    await refreshChainPill(); refreshAnomCount();
+    renderRecentActivity();
+  } finally {
+    if (btn) setTimeout(() => { btn.disabled = false; }, 500);
+  }
 }
-async function rejectMatchIn(outcome, idx) {
-  const m = outcome.matches[idx];
+
+async function acceptAllHigh() {
+  if (!currentOutcome) { toast('Run reconciliation first.', 'warn'); return; }
+  const eligible = currentOutcome.matches.filter(m => m.score >= 0.90);
+  if (!eligible.length) { toast('No matches ≥ 90%.', 'warn'); return; }
+  for (const m of eligible) {
+    await EventLog.append('match.accepted', 'user', { receiptId: m.receipt.id, bankLineId: m.bankLine.id, score: m.score });
+    const balanced = m.receipt.totalCents === Math.abs(m.bankLine.amountCents);
+    await EventLog.append('journal.posted', 'user', {
+      date: m.bankLine.date, memo: 'Reconciled: ' + m.receipt.vendor,
+      debit: { account: '6100 - Office Supplies', amountCents: m.receipt.totalCents },
+      credit: { account: '1000 - Bank', amountCents: Math.abs(m.bankLine.amountCents) },
+      balanced,
+    });
+  }
+  toast(`${eligible.length} match(es) accepted (≥90%).`, 'ok');
+  await refreshChainPill(); refreshAnomCount();
+  renderRecentActivity();
+}
+
+function rejectMatch(m) {
   const body = el('div');
   body.innerHTML = `<label for="reasonInput">Reason (min ${SETTINGS.minReason} chars)</label><input id="reasonInput" placeholder="e.g. Wrong vendor — duplicate charge" /><p class="hint" style="margin-top:var(--gap-sm)">Rejecting without a reason is logged and flagged as a critical anomaly.</p>`;
   modal({
@@ -1281,15 +1569,38 @@ async function rejectMatchIn(outcome, idx) {
         await EventLog.append('match.rejected', 'user', { receiptId: m.receipt.id, bankLineId: m.bankLine.id, reason });
         toast(reason.length >= SETTINGS.minReason ? 'Rejected with reason.' : 'Rejected — reason too short, flagged as anomaly.', reason.length >= SETTINGS.minReason ? 'ok' : 'warn');
         await refreshChainPill(); refreshAnomCount();
+        renderRecentActivity();
       }},
     ],
   });
 }
 
-function loadSampleModel() {
-  $('#sheetName').value = 'FY26 Budget';
-  $('#cellsInput').value = JSON.stringify({ Revenue: 1200000, COGS: 480000, Salaries: 300000, Marketing: 90000, Rent: 144000 });
+async function undoLastAccept() {
+  const events = EventLog.all();
+  for (let i = events.length - 1; i >= 0; i--) {
+    const e = events[i];
+    if (e.kind === 'journal.posted' && !e.payload.reversalOf) {
+      if (events.some(later => later.kind === 'journal.posted' && later.payload.reversalOf === e.seq)) {
+        toast('Latest journal already reversed.', 'warn'); return;
+      }
+      await EventLog.append('journal.posted', 'user', {
+        date: new Date().toISOString().slice(0, 10),
+        memo: 'REVERSAL of #' + e.seq + ' — ' + (e.payload.memo || ''),
+        debit: e.payload.credit,
+        credit: e.payload.debit,
+        balanced: e.payload.balanced,
+        reversalOf: e.seq,
+      });
+      toast(`Reversed journal #${e.seq}.`, 'ok');
+      await refreshChainPill(); refreshAnomCount();
+      renderRecentActivity();
+      return;
+    }
+  }
+  toast('Nothing to reverse.', 'warn');
 }
+
+/* ---------- Model UI ---------- */
 function markInvalid(inputId, errorId, msg) {
   $('#' + inputId).classList.add('invalid');
   const e = $('#' + errorId); e.style.display = 'block'; e.textContent = msg;
@@ -1313,13 +1624,15 @@ async function takeSnapshotUI() {
   } else {
     box.innerHTML = `<div class="panel" style="margin:0"><h3>Cell changes since previous snapshot</h3>
       <div class="table-wrap"><table class="table"><thead><tr><th>Cell</th><th>From</th><th>To</th><th class="num">Δ abs</th><th class="num">Magnitude</th></tr></thead><tbody>
-      ${result.changes.map(c => `<tr><td><code>${esc(c.cell)}</code></td><td>${c.from ?? '—'}</td><td>${c.to ?? '—'}</td><td class="num">${c.absDelta ? money(c.absDelta*100) : '—'}</td><td class="num">${(c.magnitude*100).toFixed(1)}%</td></tr>`).join('')}
+      ${result.changes.map(c => `<tr><td><code>${esc(c.cell)}</code></td><td>${c.from ?? '—'}</td><td>${c.to ?? '—'}</td><td class="num">${c.absDelta ? moneyAbs(c.absDelta*100) : '—'}</td><td class="num">${(c.magnitude*100).toFixed(1)}%</td></tr>`).join('')}
       </tbody></table></div></div>`;
   }
   box.querySelectorAll('[data-focus]').forEach(b => b.addEventListener('click', () => $('#' + b.dataset.focus).focus()));
   await refreshChainPill(); refreshAnomCount();
+  renderRecentActivity();
 }
 
+/* ---------- Anomalies UI ---------- */
 async function renderAnomalies() {
   const anomalies = detectAnomalies(EventLog.all());
   const body = $('#anomaliesBody');
@@ -1333,8 +1646,10 @@ async function renderAnomalies() {
   </tbody></table></div>`;
   refreshAnomCount();
 }
+
+/* ---------- Audit UI ---------- */
 async function renderAudit() {
-  const pkg = await buildAuditPackage();
+  const pkg = await buildAuditPackage({ log: false });
   window.__lastAudit = pkg;
   $('#auditStats').innerHTML = `
     <div class="stat"><div class="n">${pkg.eventCount}</div><div class="l">events</div></div>
@@ -1356,16 +1671,18 @@ async function renderAudit() {
   refreshAnomCount();
 }
 
-const EVENT_RENDER_LIMIT = 200;
-let eventRenderLimit = EVENT_RENDER_LIMIT;
+/* ---------- Events UI ---------- */
+let eventRenderLimit = RENDER_LIMIT;
+let eventScrollPos = 0;
 function renderEvents() {
+  const body = $('#eventsBody');
+  eventScrollPos = body.scrollTop;
   const filter = ($('#eventFilter')?.value || '').toLowerCase();
   const all = EventLog.all().filter(e => !filter
     || e.kind.toLowerCase().includes(filter)
     || e.actor.toLowerCase().includes(filter)
     || JSON.stringify(e.payload).toLowerCase().includes(filter));
   const visible = all.slice(-eventRenderLimit).reverse();
-  const body = $('#eventsBody');
   if (!visible.length) {
     body.innerHTML = `<p class="empty" style="padding:var(--gap)">${filter ? 'No events match filter.' : 'No events yet. <button class="ghost small" data-nav="reconcile">Run a reconciliation</button>'}</p>`;
     body.querySelectorAll('[data-nav]').forEach(b => b.addEventListener('click', () => nav(b.dataset.nav)));
@@ -1388,20 +1705,29 @@ function renderEvents() {
   if (all.length > eventRenderLimit) {
     const more = el('div', { style: 'padding:var(--gap); text-align:center' });
     const btn = el('button', { class: 'ghost small' }, `Show more (${all.length - eventRenderLimit} older)`);
-    btn.addEventListener('click', () => { eventRenderLimit += EVENT_RENDER_LIMIT; renderEvents(); });
+    btn.addEventListener('click', () => { eventRenderLimit += RENDER_LIMIT; renderEvents(); });
     more.appendChild(btn);
     frag.appendChild(more);
   }
   body.innerHTML = '';
   body.appendChild(frag);
+  body.scrollTop = eventScrollPos;
   body.querySelectorAll('[data-copy]').forEach(b => b.addEventListener('click', () => copyText(b.dataset.copy, 'Copied')));
 }
-const onFilterInput = debounce(() => { eventRenderLimit = EVENT_RENDER_LIMIT; renderEvents(); }, 180);
+const onFilterInput = debounce(() => { eventRenderLimit = RENDER_LIMIT; renderEvents(); }, 180);
 
+/* ---------- Chain / anomalies ---------- */
 async function verifyChainUI() {
   const r = await EventLog.verifyChain();
   $('#chainResult').textContent = r.ok ? `Chain verified — ${r.count} events, all hashes link correctly.` : `Chain BROKEN at event #${r.brokenAt}.`;
   await refreshChainPill();
+}
+async function verifyChainOnOpen() {
+  const r = await EventLog.verifyChain();
+  if (!r.ok) {
+    showBanner(`Chain broken at event #${r.brokenAt}. Open Event Log to investigate.`,
+      [{ label: 'Open log', onClick: () => nav('events') }], 'crit', 'integrity-now');
+  }
 }
 async function refreshChainPill() {
   const r = await EventLog.verifyChain();
@@ -1411,16 +1737,17 @@ async function refreshChainPill() {
 }
 function refreshAnomCount() {
   getCachedAnomalies();
-  const count = EventLog.cachedAnomCount;
+  const count = EventLog.cachedCriticalCount;
   const e = $('#anomCount');
   e.textContent = count; e.style.display = count ? 'inline-block' : 'none';
 }
 
+/* ---------- Exports ---------- */
 function exportJournalCSV() {
   const events = EventLog.all().filter(e => e.kind === 'journal.posted');
   if (!events.length) { toast('No journal entries to export.', 'warn'); return; }
-  const rows = [['seq','date','memo','debit_account','debit_amount','credit_account','credit_amount','balanced']];
-  events.forEach(e => rows.push([e.seq, e.payload.date, e.payload.memo, e.payload.debit.account, (e.payload.debit.amountCents/100).toFixed(2), e.payload.credit.account, (e.payload.credit.amountCents/100).toFixed(2), e.payload.balanced ? 'yes' : 'NO']));
+  const rows = [['seq','date','memo','debit_account','debit_amount','credit_account','credit_amount','balanced','reversal_of']];
+  events.forEach(e => rows.push([e.seq, e.payload.date, e.payload.memo, e.payload.debit.account, (e.payload.debit.amountCents/100).toFixed(2), e.payload.credit.account, (e.payload.credit.amountCents/100).toFixed(2), e.payload.balanced ? 'yes' : 'NO', e.payload.reversalOf || '']));
   downloadFile('ledgerline-journal-' + Date.now() + '.csv', toCSV(rows), 'text/csv');
   toast('Journal CSV downloaded.', 'ok');
 }
@@ -1432,6 +1759,13 @@ function exportAnomaliesCSV() {
   downloadFile('ledgerline-anomalies-' + Date.now() + '.csv', toCSV(rows), 'text/csv');
   toast('Anomalies CSV downloaded.', 'ok');
 }
+function copyAnomaliesTSV() {
+  const anomalies = detectAnomalies(EventLog.all());
+  if (!anomalies.length) { toast('No anomalies to copy.', 'warn'); return; }
+  const rows = [['severity','rule','seq','message']];
+  anomalies.forEach(a => rows.push([a.severity, a.rule, a.seq, a.message]));
+  copyText(toTSV(rows), 'Anomalies copied as TSV');
+}
 function downloadAudit() {
   const pkg = window.__lastAudit;
   if (!pkg) { renderAudit().then(downloadAudit); return; }
@@ -1439,24 +1773,43 @@ function downloadAudit() {
   toast('Audit package downloaded.', 'ok');
 }
 function copyAuditText() {
-  const pkg = window.__lastAudit; if (!pkg) { toast('Run refresh first.', 'warn'); return; }
+  const pkg = window.__lastAudit;
+  if (!pkg) { toast('Run refresh first.', 'warn'); return; }
   copyText(buildAuditText(pkg), 'Audit summary copied.');
 }
+function downloadBackup() {
+  const pkg = {
+    generatedAt: new Date().toISOString(),
+    settings: SETTINGS,
+    events: EventLog.all(),
+    lastSnapshot,
+  };
+  downloadFile('ledgerline-backup-' + new Date().toISOString().slice(0,19).replace(/[:T]/g,'-') + '.json',
+    JSON.stringify(pkg, null, 2), 'application/json');
+  SafeStore.set(AUTO_BACKUP_KEY, new Date().toISOString());
+  toast('Backup downloaded.', 'ok');
+}
 
+/* ---------- Reset ---------- */
 function resetLedger(confirmRequired = false) {
   if (confirmRequired || confirm('Erase the local ledger, snapshots, and settings? This cannot be undone.')) {
     EventLog.reset();
     lastSnapshot = null;
+    currentOutcome = null;
+    window.__lastAudit = null;
     SafeStore.wipeAll();
     $('#reconResults').innerHTML = '';
     $('#reconSummary').textContent = '';
     $('#parseErrors').innerHTML = '';
     $('#lastRun').style.display = 'none';
+    document.querySelectorAll('[data-banner-id]').forEach(b => b.remove());
     toast('Local ledger erased.', 'ok');
     refreshChainPill(); refreshAnomCount();
+    renderRecentActivity();
   }
 }
 
+/* ---------- Keyboard ---------- */
 document.addEventListener('keydown', e => {
   const mod = e.ctrlKey || e.metaKey;
   if (mod && e.key.toLowerCase() === 'k') { e.preventDefault(); openApp(); }
@@ -1465,6 +1818,10 @@ document.addEventListener('keydown', e => {
     if (active === 'reconcile') runReconcile();
     if (active === 'model') takeSnapshotUI();
   }
+  if (mod && e.key.toLowerCase() === 'z' && !e.target.matches('input,textarea')) {
+    e.preventDefault();
+    undoLastAccept();
+  }
   if (e.key === 'Escape') {
     if (modalStack.length) { modalStack[modalStack.length - 1](); return; }
     if ($('#sidebar').classList.contains('open')) closeSidebar();
@@ -1472,59 +1829,29 @@ document.addEventListener('keydown', e => {
   if (e.key === '?' && !e.target.matches('input,textarea')) { e.preventDefault(); openShortcuts(); }
 });
 
-async function runSelfTests() {
-  const results = [];
-  const assert = (name, cond, extra = '') => results.push({ name, ok: !!cond, extra });
-  assert('similarity exact', similarity('Office Depot', 'Office Depot') === 1);
-  assert('similarity empty', similarity('', '') === 1);
-  assert('similarity different', similarity('abc', 'xyz') < 0.3);
-  assert('parseAmountCents basic', parseAmountCents('1,240.00').cents === 124000);
-  assert('parseAmountCents sci notation rejected', !parseAmountCents('1e5').ok);
-  assert('parseAmountCents comma rejected digits', parseAmountCents('1.2.3').ok === false);
-  assert('isValidDate good', isValidDate('2026-11-02'));
-  assert('isValidDate bad', !isValidDate('not-a-date'));
-  assert('fx same currency', fxRate('ZAR', 'ZAR') === 1);
-  const usd = convertCents(100000, 'USD', 'ZAR');
-  assert('fx USD→ZAR applies rate', usd === Math.round(100000 * SETTINGS.fx.USD));
-  const receipts = parseReceipts('A | 2026-11-01 | 100.00 | 0 | ZAR').receipts;
-  const bank = parseBankLines('2026-11-01 | A | -100.00 | ZAR').bankLines;
-  assert('parse receipts count', receipts.length === 1);
-  assert('parse bank count', bank.length === 1);
-  const { matches } = suggestMatches(receipts, bank);
-  assert('suggestMatches finds match', matches.length === 1);
-  assert('suggestMatches score high', matches[0].score > 0.9);
-  const diff = diffSnapshots({ A: 100 }, { A: 200 });
-  assert('diff detects change', diff.length === 1 && diff[0].absDelta === 100);
-  const before = EventLog.all().length;
-  await EventLog.append('test.event', 'test', { x: 1 });
-  const after = EventLog.all().length;
-  const v = await EventLog.verifyChain();
-  assert('chain append increments', after === before + 1);
-  assert('chain verifies after append', v.ok);
-  const box = el('div', { class: 'panel' });
-  box.innerHTML = `<h2>Self-tests (${results.filter(r => r.ok).length}/${results.length} passed)</h2>
-    <div class="table-wrap"><table class="table"><thead><tr><th>Test</th><th>Result</th></tr></thead><tbody>
-    ${results.map(r => `<tr><td>${esc(r.name)}</td><td><span class="badge ${r.ok ? 'ok' : 'crit'}">${r.ok ? 'pass' : 'FAIL'}</span></td></tr>`).join('')}
-    </tbody></table></div>`;
-  document.body.insertBefore(box, document.body.firstChild);
+/* ---------- Global search ---------- */
+const onGlobalSearch = debounce(query => {
+  const q = (query || '').toLowerCase().trim();
+  if (!q) return;
+  const hits = EventLog.all().filter(e => JSON.stringify(e.payload).toLowerCase().includes(q)).slice(-10).reverse();
+  if (!hits.length) { toast('No matches in event log.', 'warn'); return; }
+  const body = el('div');
+  body.innerHTML = `<ul class="recent-activity">${hits.map(e => `
+    <li><span><span class="badge muted">#${e.seq}</span> <strong>${esc(e.kind)}</strong><br><small>${esc(JSON.stringify(e.payload).slice(0, 120))}…</small></span>
+    <span class="when">${esc(new Date(e.at).toLocaleTimeString())}</span></li>`).join('')}</ul>`;
+  modal({ title: `${hits.length} result(s) for "${query}"`, body,
+    actions: [{ label: 'Close', className: 'ghost', onClick: () => {}, cancel: true }] });
+}, 280);
+
+/* ---------- Split control ---------- */
+function setSplit(pct) {
+  const left = pct;
+  const right = 100 - pct;
+  const cols = $('#reconcileColumns');
+  if (cols) cols.style.gridTemplateColumns = `${left}fr ${right}fr`;
 }
 
-async function importXlsx(file) {
-  const status = $('#sheetStatus');
-  status.textContent = 'Loading SheetJS…';
-  try { await window.__loadScript('https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js'); }
-  catch { status.textContent = 'SheetJS unavailable (offline?) — paste JSON instead.'; return; }
-  status.textContent = 'Parsing ' + file.name + '…';
-  const buf = await file.arrayBuffer();
-  const wb = XLSX.read(buf, { type: 'array' });
-  const sheet = wb.Sheets[wb.SheetNames[0]];
-  const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
-  const cells = {};
-  let k = 0;
-  rows.forEach(row => row.forEach(v => { if (v !== undefined && v !== null) { cells['C' + (++k)] = typeof v === 'number' ? v : String(v); } }));
-  $('#cellsInput').value = JSON.stringify(cells);
-  status.textContent = `Loaded ${Object.keys(cells).length} cells from ${wb.SheetNames[0]}.`;
-}
+/* ---------- OCR ---------- */
 async function importReceiptImage(file) {
   const status = $('#ocrStatus');
   status.textContent = 'Loading Tesseract (first time only, ~2MB)…';
@@ -1545,6 +1872,84 @@ async function importReceiptImage(file) {
   } catch (e) { status.textContent = 'OCR failed: ' + e.message; }
 }
 
+/* ---------- XLSX (fixed to preserve A1 references) ---------- */
+async function importXlsx(file) {
+  const status = $('#sheetStatus');
+  status.textContent = 'Loading SheetJS…';
+  try { await window.__loadScript('https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js'); }
+  catch { status.textContent = 'SheetJS unavailable (offline?) — paste JSON instead.'; return; }
+  status.textContent = 'Parsing ' + file.name + '…';
+  const buf = await file.arrayBuffer();
+  const wb = XLSX.read(buf, { type: 'array' });
+  const sheet = wb.Sheets[wb.SheetNames[0]];
+  const range = XLSX.utils.decode_range(sheet['!ref'] || 'A1');
+  const cells = {};
+  for (let R = range.s.r; R <= range.e.r; R++) {
+    for (let C = range.s.c; C <= range.e.c; C++) {
+      const addr = XLSX.utils.encode_cell({ r: R, c: C });
+      const cell = sheet[addr];
+      if (!cell) continue;
+      if (cell.v !== undefined && cell.v !== null && cell.v !== '') {
+        cells[addr] = typeof cell.v === 'number' ? cell.v : String(cell.v);
+      }
+    }
+  }
+  $('#cellsInput').value = JSON.stringify(cells);
+  status.textContent = `Loaded ${Object.keys(cells).length} cells from ${wb.SheetNames[0]} (A1 addresses preserved).`;
+}
+
+/* ---------- Self-tests (?test=1) ---------- */
+async function runSelfTests() {
+  const results = [];
+  const assert = (name, cond) => results.push({ name, ok: !!cond });
+  assert('similarity exact', similarity('Office Depot', 'Office Depot') === 1);
+  assert('similarity empty', similarity('', '') === 1);
+  assert('similarity different', similarity('abc', 'xyz') < 0.3);
+  assert('parseAmountCents basic', parseAmountCents('1,240.00').cents === 124000);
+  assert('parseAmountCents empty rejected', parseAmountCents('').ok === false);
+  assert('parseAmountCents sci rejected', !parseAmountCents('1e5').ok);
+  assert('parseAmountCents multi-dot rejected', parseAmountCents('1.2.3').ok === false);
+  assert('isValidDate good', isValidDate('2026-11-02'));
+  assert('isValidDate bad', !isValidDate('not-a-date'));
+  assert('fx same currency', fxRate('ZAR', 'ZAR') === 1);
+  assert('fx USD→ZAR', convertCents(100000, 'USD', 'ZAR') === Math.round(100000 * SETTINGS.fx.USD));
+  const receipts = parseReceipts('A | 2026-11-01 | 100.00 | 0 | ZAR').receipts;
+  const bank = parseBankLines('2026-11-01 | A | -100.00 | ZAR').bankLines;
+  assert('parse receipts', receipts.length === 1);
+  assert('parse bank', bank.length === 1);
+  const { matches } = await suggestMatches(receipts, bank);
+  assert('match found', matches.length === 1);
+  assert('match high score', matches[0].score > 0.9);
+  const diff = diffSnapshots({ A: 100 }, { A: 200 });
+  assert('diff detects change', diff.length === 1 && diff[0].absDelta === 100);
+  const before = EventLog.all().length;
+  await EventLog.append('test.event', 'test', { x: 1 });
+  assert('append increments', EventLog.all().length === before + 1);
+  const v = await EventLog.verifyChain();
+  assert('chain verifies', v.ok);
+  const box = el('div', { class: 'panel' });
+  const passed = results.filter(r => r.ok).length;
+  box.innerHTML = `<h2>Self-tests (${passed}/${results.length} passed)</h2>
+    <div class="table-wrap"><table class="table"><thead><tr><th>Test</th><th>Result</th></tr></thead><tbody>
+    ${results.map(r => `<tr><td>${esc(r.name)}</td><td><span class="badge ${r.ok ? 'ok' : 'crit'}">${r.ok ? 'pass' : 'FAIL'}</span></td></tr>`).join('')}
+    </tbody></table></div>`;
+  document.body.insertBefore(box, document.body.firstChild);
+}
+
+/* ---------- Auto-backup ---------- */
+function maybeAutoBackup() {
+  const events = EventLog.all();
+  if (!events.length) return;
+  const last = SafeStore.get(AUTO_BACKUP_KEY);
+  const now = Date.now();
+  if (!last || now - new Date(last).getTime() > BACKUP_INTERVAL_MS) {
+    showBanner('No recent backup. Download one now to keep a copy of your ledger.',
+      [{ label: 'Download', onClick: downloadBackup }, { label: 'Later', onClick: () => document.querySelector('[data-banner-id="backup"]')?.remove() }],
+      'warn', 'backup');
+  }
+}
+
+/* ---------- Boot ---------- */
 function boot() {
   loadSettings();
 
@@ -1559,11 +1964,13 @@ function boot() {
   $('#sidebarBackdrop').addEventListener('click', closeSidebar);
 
   $('#runReconcileBtn').addEventListener('click', runReconcile);
+  $('#bulkAcceptBtn').addEventListener('click', acceptAllHigh);
   $('#reloadSampleBtn').addEventListener('click', loadSampleReconcile);
   $('#receiptImages').addEventListener('change', async e => {
     for (const f of e.target.files) await importReceiptImage(f);
     e.target.value = '';
   });
+  $$('[data-split]').forEach(b => b.addEventListener('click', () => setSplit(parseInt(b.dataset.split, 10))));
 
   $('#takeSnapshotBtn').addEventListener('click', takeSnapshotUI);
   $('#reloadSampleModelBtn').addEventListener('click', loadSampleModel);
@@ -1574,12 +1981,17 @@ function boot() {
 
   $('#refreshAnomaliesBtn').addEventListener('click', renderAnomalies);
   $('#exportAnomaliesBtn').addEventListener('click', exportAnomaliesCSV);
+  $('#copyAnomaliesTSVBtn').addEventListener('click', copyAnomaliesTSV);
 
   $('#downloadAuditBtn').addEventListener('click', downloadAudit);
   $('#exportJournalBtn').addEventListener('click', exportJournalCSV);
   $('#exportAnomaliesBtn2').addEventListener('click', exportAnomaliesCSV);
   $('#copyAuditBtn').addEventListener('click', copyAuditText);
-  $('#printBtn').addEventListener('click', () => window.print());
+  $('#printBtn').addEventListener('click', () => {
+    document.body.classList.add('printing-audit');
+    window.print();
+    setTimeout(() => document.body.classList.remove('printing-audit'), 100);
+  });
   $('#refreshAuditBtn').addEventListener('click', renderAudit);
 
   $('#eventFilter').addEventListener('input', onFilterInput);
@@ -1590,9 +2002,16 @@ function boot() {
   $('#saveFxBtn').addEventListener('click', saveFxUI);
   $('#themeToggleBtn').addEventListener('click', toggleTheme);
   $('#eraseLedgerBtn').addEventListener('click', () => resetLedger(true));
+  $('#backupNowBtn').addEventListener('click', downloadBackup);
+
+  $('#globalSearch').addEventListener('input', e => onGlobalSearch(e.target.value));
 
   refreshChainPill();
   refreshAnomCount();
+  renderRecentActivity();
+  maybeAutoBackup();
+
+  window.addEventListener('beforeunload', () => BatchedStore.flushNow());
 
   if (new URLSearchParams(location.search).get('test') === '1') runSelfTests();
 }
@@ -1601,4 +2020,4 @@ if (document.readyState === 'loading') document.addEventListener('DOMContentLoad
 else boot();
 </script>
 </body>
-</html>
+  </html>
